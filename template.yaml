@@ -1,0 +1,311 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: >-
+  The Better Store Order API
+
+Transform:
+  - AWS::Serverless-2016-10-31
+
+Parameters:
+  Environment:
+    Type: String
+    Default: prod
+
+  InfraBaseCFName:
+    Type: String
+
+  SecKmsKeysCFName:
+    Type: String
+    Default: tbs-sec-kms-prod
+
+  VpcCFStackName:
+    Type: String
+
+  OrderCFStackName:
+    Type: String
+    Default: tbs-app-order-prod
+
+  UpsertOrderReservedConcurrency:
+    Type: String
+    Default: 2
+
+  AppLoggingLevel:
+    Type: String
+    AllowedValues: [TRACE, DEBUG, INFO, WARN, ERROR, FATAL]
+    Default: INFO
+
+  SystemLogLevel:
+    Type: String
+    AllowedValues: [DEBUG, INFO, WARN]
+    Default: INFO
+
+  ReportsRdsDbSnapshotId:
+    Type: String
+    Default: ""
+
+Conditions:
+  UseReportsRdsDbSnapshot: !Not [!Equals [!Ref ReportsRdsDbSnapshotId, ""]]
+
+Resources:
+
+  ReportsRdsDbSecurityGroup:
+    Type: "AWS::EC2::SecurityGroup"
+    Properties:
+      GroupDescription: "Access from FromVPC"
+      VpcId:
+        Fn::ImportValue: !Sub ${VpcCFStackName}:VPC:Id
+      SecurityGroupIngress:
+        -
+          CidrIp:
+            Fn::ImportValue: !Sub ${VpcCFStackName}:VPC:Cidr
+          Description: "Allow traffic from inside VPC only"
+          FromPort: '3306'
+          IpProtocol: tcp
+          ToPort: '3306'
+#      SecurityGroupEgress:
+#        -
+#          CidrIp: "0.0.0.0/0"
+#          Description: "Allow all external traffic e.g. for updates"
+#          FromPort: '443'
+#          IpProtocol: tcp
+#          ToPort: '443'
+
+  ReportsRdsDbCluster:
+    Type: AWS::RDS::DBCluster
+    Properties:
+      BacktrackWindow: 0
+      BackupRetentionPeriod: 1
+      ClusterScalabilityType: standard
+      CopyTagsToSnapshot: true
+      DatabaseName: reports
+      #DBClusterParameterGroupName: String
+      #DBInstanceParameterGroupName: String
+      DBSubnetGroupName: !Ref ReportsRdsDbSubnetGroup
+      DeletionProtection: false
+      EnableCloudwatchLogsExports:
+        - error
+        - slowquery
+      # EnableGlobalWriteForwarding: Boolean
+      EnableHttpEndpoint: false
+      EnableIAMDatabaseAuthentication: false
+      EnableLocalWriteForwarding: false
+      Engine: aurora-mysql
+      EngineLifecycleSupport: open-source-rds-extended-support
+      EngineMode: provisioned
+      EngineVersion: "8.0.mysql_aurora.3.08.0"
+      # GlobalClusterIdentifier: String
+      KmsKeyId:
+        Fn::ImportValue: !Sub ${SecKmsKeysCFName}:InternalKmsKey:Id
+      ManageMasterUserPassword: true
+      MasterUsername: !If [UseReportsRdsDbSnapshot, !Ref "AWS::NoValue", "admin"]
+      MasterUserSecret:
+        KmsKeyId:
+          Fn::ImportValue: !Sub ${SecKmsKeysCFName}:InternalKmsKey:Id
+      MonitoringInterval: 0
+      # MonitoringRoleArn: String
+      NetworkType: IPV4
+      PerformanceInsightsEnabled: false
+      Port: 3306
+#      ReadEndpoint:
+#        ReadEndpoint
+      # RestoreToTime: String
+      # RestoreType: String
+      ServerlessV2ScalingConfiguration:
+        MinCapacity: 0
+        MaxCapacity: 1
+        SecondsUntilAutoPause: 300
+      SnapshotIdentifier: !If [UseReportsRdsDbSnapshot, !Ref ReportsRdsDbSnapshotId, !Ref "AWS::NoValue"]
+      StorageEncrypted: true
+      StorageType: aurora
+      Tags:
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-ReportsRdsDbCluster
+      UseLatestRestorableTime: true
+      VpcSecurityGroupIds:
+        - !Ref ReportsRdsDbSecurityGroup
+
+  ReportsRdsDbSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupDescription: !Sub ${AWS::StackName}-OrderRdsDbSubnetGroup
+      SubnetIds:
+        - Fn::ImportValue: !Sub ${VpcCFStackName}:DbPrivateSubnetA:Id
+        - Fn::ImportValue: !Sub ${VpcCFStackName}:DbPrivateSubnetB:Id
+        - Fn::ImportValue: !Sub ${VpcCFStackName}:DbPrivateSubnetC:Id
+      Tags:
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-OrderRdsDbSubnetGroup
+
+  ReportsRdsRoute53Record:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      Comment: !Sub "${AWS::StackName}-OrderRdsRoute53Record"
+      HostedZoneId:
+        Fn::ImportValue: !Sub ${InfraBaseCFName}:HostedZone:Id
+      Name:
+        Fn::Join:
+          - "."
+          - - reportsdb
+            - Fn::ImportValue: !Sub ${InfraBaseCFName}:HostedZone:DomainName
+      Type: CNAME
+      TTL: '60'
+      ResourceRecords:
+        - !GetAtt ReportsRdsDbCluster.Endpoint.Address
+
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      Path: "/"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Principal:
+              Service:
+                - "lambda.amazonaws.com"
+            Action:
+              - "sts:AssumeRole"
+      ManagedPolicyArns:
+        - "arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
+      Policies:
+        - PolicyName: !Sub ${AWS::StackName}-LambdaPolicies
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: ssm:GetParameter
+                Resource: !Sub "arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/${AWS::StackName}*"
+
+  LambdaVpcSG:
+    Type: "AWS::EC2::SecurityGroup"
+    Properties:
+      GroupDescription: "Access from FromVPC"
+      VpcId:
+        Fn::ImportValue: !Sub ${VpcCFStackName}:VPC:Id
+      SecurityGroupEgress:
+        -
+          CidrIp: "0.0.0.0/0"
+          Description: "Allow all external traffic e.g. for calling AW services"
+          FromPort: '443'
+          IpProtocol: tcp
+          ToPort: '443'
+
+  UserOrderUpsertedRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Description: Subscribe to Orders DynamoDB for new or updated orders to be copied for reporting
+      EventBusName:
+        Fn::ImportValue: !Sub ${InfraBaseCFName}:TbsEventBus:Name
+      EventPattern:
+        Source: !Sub ${OrderCFStackName}-DynamoDbStreamEventPipe
+        DetailType: OrderEvent
+
+
+
+  UpsertOrderFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ./
+      Handler: index.handler
+      Runtime: nodejs22.x
+      MemorySize: 512
+      Timeout: 10
+      AutoPublishAlias: prod
+      Description: Upsert order function
+      Tracing: Active
+      DeploymentPreference:
+        Type: AllAtOnce
+      ReservedConcurrentExecutions: !Sub ${UpsertOrderReservedConcurrency}
+      LoggingConfig:
+        LogGroup: !Ref UpsertOrderFunctionLogs
+        LogFormat: JSON
+        ApplicationLogLevel: !Ref AppLoggingLevel
+        SystemLogLevel: !Ref SystemLogLevel
+      Environment:
+        Variables:
+          REPORTS_DB_SECRET_ARN: !GetAtt ReportsRdsDbCluster.MasterUserSecret.SecretArn
+          REPORTS_DB_HOSTNAME:
+            Fn::Join:
+              - "."
+              - - reportsdb
+                - Fn::ImportValue: !Sub ${InfraBaseCFName}:HostedZone:DomainName
+      Role: !GetAtt LambdaExecutionRole.Arn
+      VpcConfig:
+        SecurityGroupIds:
+          - !Ref LambdaVpcSG
+        SubnetIds:
+          - Fn::ImportValue: !Sub ${VpcCFStackName}:AppPrivateSubnetA:Id
+          - Fn::ImportValue: !Sub ${VpcCFStackName}:AppPrivateSubnetB:Id
+          - Fn::ImportValue: !Sub ${VpcCFStackName}:AppPrivateSubnetC:Id
+    Metadata: # Manage esbuild properties
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: false
+        Target: "es2020"
+        Sourcemap: true
+        EntryPoints:
+          - src/application/event-handlers/upsert-order/index.ts
+
+  UpsertOrderFunctionLogs:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-CreateOrderFunction"
+      RetentionInDays: 365
+
+  UserOrderUpsertedEventQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub "${AWS::StackName}-UserOrderUpsertedEventQueue"
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt UserOrderUpsertedEventDLQ.Arn
+        maxReceiveCount: 1
+
+  UserOrderUpsertedEventDLQ:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub "${AWS::StackName}-UserOrderUpsertedEventDLQ"
+
+  UserOrderUpsertedEventSourceMapping:
+    Type: AWS::Lambda::EventSourceMapping
+    Properties:
+      BatchSize: 10
+      EventSourceArn: !GetAtt UserOrderUpsertedEventQueue.Arn
+      FunctionName: !Ref UpsertOrderFunction
+
+
+Outputs:
+
+  UserOrderUpsertedEventQueueName:
+    Description: Queue Name
+    Value: !GetAtt UserOrderUpsertedEventQueue.QueueName
+    Export:
+      Name: !Sub '${AWS::StackName}:UserOrderUpsertedEventQueue:Name'
+
+  UserOrderUpsertedEventQueueArn:
+    Description: Queue Arn
+    Value: !GetAtt UserOrderUpsertedEventQueue.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}:UserOrderUpsertedEventQueue:Arn'
+
+  UserOrderUpsertedEventQueueUrl:
+    Description: Queue Url
+    Value: !Ref UserOrderUpsertedEventQueue
+    Export:
+      Name: !Sub '${AWS::StackName}:UserOrderUpsertedEventQueue:Url'
+
+  UserOrderUpsertedEventDLQName:
+    Description: Queue Name
+    Value: !GetAtt UserOrderUpsertedEventDLQ.QueueName
+    Export:
+      Name: !Sub '${AWS::StackName}:UserOrderUpsertedEventDLQ:Name'
+
+  PUserOrderUpsertedEventDLQArn:
+    Description: Queue Arn
+    Value: !GetAtt UserOrderUpsertedEventDLQ.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}:UserOrderUpsertedEventDLQ:Arn'
+
+  UserOrderUpsertedEventDLQUrl:
+    Description: Queue Url
+    Value: !Ref UserOrderUpsertedEventDLQ
+    Export:
+      Name: !Sub '${AWS::StackName}:UserOrderUpsertedEventDLQ:Url'
