@@ -230,15 +230,6 @@ Resources:
                 - "events.amazonaws.com"
             Action:
               - "sts:AssumeRole"
-      Policies:
-        - PolicyName: !Sub ${AWS::StackName}-SQS
-          PolicyDocument:
-            Version: "2012-10-17"
-            Statement:
-              - Effect: Allow
-                Action: sqs:SendMessage
-                Resource: !GetAtt UserOrderUpsertedEventQueue.Arn
-
 
   UpsertOrderFunction:
     Type: AWS::Serverless::Function
@@ -267,6 +258,8 @@ Resources:
               - "."
               - - reportsdb
                 - Fn::ImportValue: !Sub ${InfraBaseCFName}:HostedZone:DomainName
+          REPORTS_DB_NAME: reports
+          REPORTS_DB_COMNNECTION_LIMIT: 10
       Role: !GetAtt LambdaExecutionRole.Arn
       VpcConfig:
         SecurityGroupIds:
@@ -287,7 +280,7 @@ Resources:
   UpsertOrderFunctionLogs:
     Type: AWS::Logs::LogGroup
     Properties:
-      LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-CreateOrderFunction"
+      LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-UpsertOrderFunction"
       RetentionInDays: 365
 
   UserOrderUpsertedEventQueue:
@@ -297,6 +290,20 @@ Resources:
       RedrivePolicy:
         deadLetterTargetArn: !GetAtt UserOrderUpsertedEventDLQ.Arn
         maxReceiveCount: 1
+
+  # An SQS reource policy is required for events to publish to queue
+  UserOrderUpsertedEventQueuePolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      PolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: events.amazonaws.com
+            Action: sqs:SendMessage
+            Resource: !GetAtt UserOrderUpsertedEventQueue.Arn
+      Queues:
+        - Ref: UserOrderUpsertedEventQueue
 
   UserOrderUpsertedEventDLQ:
     Type: AWS::SQS::Queue
