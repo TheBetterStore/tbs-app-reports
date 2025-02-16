@@ -184,6 +184,9 @@ Resources:
                 Action: kms:Decrypt
                 Resource:
                   Fn::ImportValue: !Sub ${SecKmsKeysCFName}:InternalKmsKey:Arn
+              - Effect: Allow
+                Action: secretsmanager:GetSecretValue
+                Resource: !GetAtt ReportsRdsDbCluster.MasterUserSecret.SecretArn
 
   LambdaVpcSG:
     Type: "AWS::EC2::SecurityGroup"
