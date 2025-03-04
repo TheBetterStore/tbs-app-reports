@@ -1,10 +1,10 @@
 import {inject, injectable} from 'inversify';
 import TYPES from '../../infrastructure/types';
-import {OrderViewModel} from '../viewmodels/order-viewmodel';
 import {IParameterStoreClient} from '../../infrastructure/interfaces/parameterstore-client.interface';
 import {IAppReportsService} from "./app-reports-service.interface";
 import {IReportsRepository} from "../../infrastructure/interfaces/reports-repository.interface";
 import {IDbParamsBuilder} from "../../infrastructure/persistence/dbparams-builder.interface";
+import {OrderDto} from "../../infrastructure/persistence/order.dto";
 
 @injectable()
 /**
@@ -38,25 +38,25 @@ export class AppReportsService implements IAppReportsService {
    * @param {string} orderId
    * @returns {Promise}
    */
-  async getOrder(customerId: string, orderId: string): Promise<OrderViewModel> {
+  async getOrder(customerId: string, orderId: string): Promise<OrderDto> {
     console.info('Entered getOrder');
     console.warn('Not yet implemented');
-    return new Promise<OrderViewModel>((resolve, reject) => {});
+    return new Promise<OrderDto>((resolve, reject) => {});
   }
 
   /**
    * createOrder; Initialise customer order, create Strip PaymentIntent, and return this to the client if no errors to
    * allow payment to be confirmed
-   * @param {OrderViewModel} o
+   * @param {IDdbOrderViewModel} o
    * @returns {Promise}
    */
-  async upsertOrder(o: OrderViewModel) {
+  async upsertOrder(o: OrderDto) {
     console.info('Entered AppReportsService.upsertOrder');
     const dbParams = await this.dbParamsBuilder.getDbParams(process.env);
     console.debug('params:', dbParams);
 
     console.warn('Not yet implemented');
-    // return new Promise<OrderViewModel>((resolve, reject) => {});
+    // return new Promise<OrderViewmodeInterface>((resolve, reject) => {});
   }
 
 }

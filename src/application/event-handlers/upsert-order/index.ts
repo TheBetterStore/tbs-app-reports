@@ -3,6 +3,7 @@ import TYPES from '../../../infrastructure/types';
 import container from './container';
 import {SQSEvent} from 'aws-lambda';
 import {IAppReportsService} from "../../services/app-reports-service.interface";
+import {OrderDto} from "../../../infrastructure/persistence/order.dto";
 
 console.log('INFO - lambda is cold-starting.');
 exports.handler = async (event: SQSEvent) => {
@@ -17,10 +18,9 @@ exports.handler = async (event: SQSEvent) => {
     console.debug(rec.body);
     const o: any = JSON.parse(rec.body);
 
-    const eventDetail = o.detail;
-    const eventData = eventDetail.dynamodb;
+    const order: OrderDto = o.detail;
 
-    console.debug(`Received event: `, eventData);
+    console.debug(`Received order: `, order);
 
 
     await svc.upsertOrder(o);
