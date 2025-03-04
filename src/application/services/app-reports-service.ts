@@ -1,10 +1,10 @@
 import {inject, injectable} from 'inversify';
 import TYPES from '../../infrastructure/types';
-import {Logger} from '@thebetterstore/tbs-lib-infra-common/lib/logger';
-import {OrderViewModel} from '../viewmodels/order-viewmodel';
 import {IParameterStoreClient} from '../../infrastructure/interfaces/parameterstore-client.interface';
 import {IAppReportsService} from "./app-reports-service.interface";
 import {IReportsRepository} from "../../infrastructure/interfaces/reports-repository.interface";
+import {IDbParamsBuilder} from "../../infrastructure/persistence/dbparams-builder.interface";
+import {OrderDto} from "../../infrastructure/persistence/order.dto";
 
 @injectable()
 /**
@@ -15,6 +15,7 @@ export class AppReportsService implements IAppReportsService {
   private repo: IReportsRepository;
   // @ts-ignore
   private parameterStoreClient: IParameterStoreClient;
+  private dbParamsBuilder: IDbParamsBuilder;
 
   /**
    * constructor
@@ -24,9 +25,11 @@ export class AppReportsService implements IAppReportsService {
    * @param {IOrderRepository} repo
    */
   constructor(@inject(TYPES.IParameterStoreClient) parameterStoreClient: IParameterStoreClient,
+              @inject(TYPES.IDbParamsBuilder) dbParamsBuilder: IDbParamsBuilder,
               @inject(TYPES.IReportsRepository) repo: IReportsRepository) {
     this.parameterStoreClient = parameterStoreClient;
     this.repo = repo;
+    this.dbParamsBuilder = dbParamsBuilder;
   }
 
   /**
@@ -35,23 +38,25 @@ export class AppReportsService implements IAppReportsService {
    * @param {string} orderId
    * @returns {Promise}
    */
-  async getOrder(customerId: string, orderId: string): Promise<OrderViewModel> {
-    Logger.info('Entered getOrder');
-    Logger.warn('Not yet implemented');
-    return new Promise<OrderViewModel>((resolve, reject) => {});
+  async getOrder(customerId: string, orderId: string): Promise<OrderDto> {
+    console.info('Entered getOrder');
+    console.warn('Not yet implemented');
+    return new Promise<OrderDto>((resolve, reject) => {});
   }
 
   /**
    * createOrder; Initialise customer order, create Strip PaymentIntent, and return this to the client if no errors to
    * allow payment to be confirmed
-   * @param {OrderViewModel} o
+   * @param {IDdbOrderViewModel} o
    * @returns {Promise}
    */
-  async upsertOrder(o: OrderViewModel): Promise<OrderViewModel> {
-    Logger.info('Entered AppReportsService.upsertOrder');
+  async upsertOrder(o: OrderDto) {
+    console.info('Entered AppReportsService.upsertOrder');
+    const dbParams = await this.dbParamsBuilder.getDbParams(process.env);
+    console.debug('params:', dbParams);
 
-    Logger.warn('Not yet implemented');
-    return new Promise<OrderViewModel>((resolve, reject) => {});
+    console.warn('Not yet implemented');
+    // return new Promise<OrderViewmodeInterface>((resolve, reject) => {});
   }
 
 }
