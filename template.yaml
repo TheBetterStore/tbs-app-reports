@@ -176,10 +176,8 @@ Resources:
                 Resource: !Sub "arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/${AWS::StackName}*"
               - Effect: Allow
                 Action:
-                  - sqs:ReceiveMessage
-                  - sqs:DeleteMessage
-                  - sqs:GetQueueAttributes
-                Resource: !GetAtt UserOrderUpsertedEventQueue.Arn
+                  - sqs:SendMessage
+                Resource: !GetAtt UserOrderUpsertedFunctionDLQ.Arn
               - Effect: Allow
                 Action: kms:Decrypt
                 Resource:
@@ -205,7 +203,7 @@ Resources:
   UserOrderUpsertedRule:
     Type: AWS::Events::Rule
     Properties:
-      Description: Subscribe to Orders DynamoDB for new or updated orders to be copied for reporting
+      Description: Subscribe to Order update events and process for reporting
       EventBusName:
         Fn::ImportValue: !Sub ${InfraBaseCFName}:TbsEventBus:Name
       EventPattern:
@@ -214,25 +212,9 @@ Resources:
         detail-type:
           - OrderEvent
       State: ENABLED
-      RoleArn: !GetAtt EventToSqsRole.Arn
       Targets:
         - Id: UserOrderUpsertedEventQueue
-          Arn: !GetAtt UserOrderUpsertedEventQueue.Arn
-
-
-  EventToSqsRole:
-    Type: AWS::IAM::Role
-    Properties:
-      Path: "/"
-      AssumeRolePolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: "Allow"
-            Principal:
-              Service:
-                - "events.amazonaws.com"
-            Action:
-              - "sts:AssumeRole"
+          Arn: !GetAtt UpsertOrderFunction.Arn
 
   UpsertOrderFunction:
     Type: AWS::Serverless::Function
@@ -245,6 +227,9 @@ Resources:
       AutoPublishAlias: prod
       Description: Upsert order function
       Tracing: Active
+      DeadLetterQueue:
+        TargetArn: !GetAtt UserOrderUpsertedFunctionDLQ.Arn
+        Type: SQS
       DeploymentPreference:
         Type: AllAtOnce
       ReservedConcurrentExecutions: !Sub ${UpsertOrderReservedConcurrency}
@@ -286,75 +271,36 @@ Resources:
       LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-UpsertOrderFunction"
       RetentionInDays: 365
 
-  UserOrderUpsertedEventQueue:
-    Type: AWS::SQS::Queue
-    Properties:
-      QueueName: !Sub "${AWS::StackName}-UserOrderUpsertedEventQueue"
-      RedrivePolicy:
-        deadLetterTargetArn: !GetAtt UserOrderUpsertedEventDLQ.Arn
-        maxReceiveCount: 1
-
   # An SQS reource policy is required for events to publish to queue
-  UserOrderUpsertedEventQueuePolicy:
-    Type: AWS::SQS::QueuePolicy
+  UserOrderUpsertedEventLambdaPermission:
+    Type: AWS::Lambda::Permission
     Properties:
-      PolicyDocument:
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service: events.amazonaws.com
-            Action: sqs:SendMessage
-            Resource: !GetAtt UserOrderUpsertedEventQueue.Arn
-      Queues:
-        - Ref: UserOrderUpsertedEventQueue
+      FunctionName: !Ref UpsertOrderFunction
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt UserOrderUpsertedRule.Arn
 
-  UserOrderUpsertedEventDLQ:
+  UserOrderUpsertedFunctionDLQ:
     Type: AWS::SQS::Queue
     Properties:
-      QueueName: !Sub "${AWS::StackName}-UserOrderUpsertedEventDLQ"
-
-  UserOrderUpsertedEventSourceMapping:
-    Type: AWS::Lambda::EventSourceMapping
-    Properties:
-      BatchSize: 10
-      EventSourceArn: !GetAtt UserOrderUpsertedEventQueue.Arn
-      FunctionName: !Ref UpsertOrderFunction
-
+      QueueName: !Sub "${AWS::StackName}-UserOrderUpsertedFunctionDLQ"
 
 Outputs:
 
-  UserOrderUpsertedEventQueueName:
+  UserOrderUpsertedFunctionDLQName:
     Description: Queue Name
-    Value: !GetAtt UserOrderUpsertedEventQueue.QueueName
-    Export:
-      Name: !Sub '${AWS::StackName}:UserOrderUpsertedEventQueue:Name'
-
-  UserOrderUpsertedEventQueueArn:
-    Description: Queue Arn
-    Value: !GetAtt UserOrderUpsertedEventQueue.Arn
-    Export:
-      Name: !Sub '${AWS::StackName}:UserOrderUpsertedEventQueue:Arn'
-
-  UserOrderUpsertedEventQueueUrl:
-    Description: Queue Url
-    Value: !Ref UserOrderUpsertedEventQueue
-    Export:
-      Name: !Sub '${AWS::StackName}:UserOrderUpsertedEventQueue:Url'
-
-  UserOrderUpsertedEventDLQName:
-    Description: Queue Name
-    Value: !GetAtt UserOrderUpsertedEventDLQ.QueueName
+    Value: !GetAtt UserOrderUpsertedFunctionDLQ.QueueName
     Export:
       Name: !Sub '${AWS::StackName}:UserOrderUpsertedEventDLQ:Name'
 
   PUserOrderUpsertedEventDLQArn:
     Description: Queue Arn
-    Value: !GetAtt UserOrderUpsertedEventDLQ.Arn
+    Value: !GetAtt UserOrderUpsertedFunctionDLQ.Arn
     Export:
       Name: !Sub '${AWS::StackName}:UserOrderUpsertedEventDLQ:Arn'
 
   UserOrderUpsertedEventDLQUrl:
     Description: Queue Url
-    Value: !Ref UserOrderUpsertedEventDLQ
+    Value: !Ref UserOrderUpsertedFunctionDLQ
     Export:
       Name: !Sub '${AWS::StackName}:UserOrderUpsertedEventDLQ:Url'
