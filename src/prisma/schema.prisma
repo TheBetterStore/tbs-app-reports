@@ -13,3 +13,29 @@ datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
+
+model Order {
+  orderId String @id
+  customerId String
+  receiptEmail String
+  amountCharged Decimal @db.Decimal(10,2)
+  netTotal Decimal @db.Decimal(10,4)
+  grossTotal Decimal @db.Decimal(10,4)
+  taxRate Decimal @db.Decimal(4,2)
+  createdTime DateTime
+  lastUpdatedTime DateTime
+  status String
+  stripePaymentIntentId String
+  stripePaymentIntentStatus String
+  orderItems OrderItem[]
+}
+
+model OrderItem {
+  orderItemId BigInt  @id @default(autoincrement())
+  order Order @relation(fields: [orderId], references: [orderId])
+  orderId String
+  quantity Int
+  productId String
+  productName String @db.VarChar(128)
+  grossPrice Decimal @db.Decimal(4,2)
+}
