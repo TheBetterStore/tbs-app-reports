@@ -18,6 +18,14 @@ and enter your GitHub userid and classic Personal Access Token with read package
 https://docs.github.com/en/packages/working-with-a-github-packages-registry/working-with-the-npm-registry#authenticating-to-github-packages
 
 
+## Configure Prisma
+1. From the project's root directory:
+    1. npm install prisma --save-dev
+    2. npm install @prisma/client
+    3. cd src 
+    2. npx prisma init --datasource-provider postgresql --output ../generated/prisma
+    3. npx prisma migrate dev --name init  # needs to be pointing to DB
+
 ## Deploy the sample application
 
 The Serverless Application Model Command Line Interface (SAM CLI) is an extension of the AWS CLI that adds functionality for building and testing Lambda applications. It uses Docker to run your functions in an Amazon Linux environment that matches Lambda. It can also emulate your application's build environment and API.
@@ -36,5 +44,5 @@ You can find more information and examples about filtering Lambda function logs 
 ## Resources
 
 1. [AWS SAM developer guide](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/what-is-sam.html) for an introduction to SAM specification, the SAM CLI, and serverless application concepts.
-2. [Complex Event Filtering with AWS EventBridge Pipes, Rules and No Custom Code.] (https://dev.to/aws-builders/complex-event-filtering-with-aws-eventbridge-pipes-rules-and-no-custom-code-2b11)
-
+2. [Prisma getting started] (https://www.prisma.io/docs/getting-started/quickstart-sqlite)
+3. [Deploy Prisma to AWS Lambda] (https://www.prisma.io/docs/orm/prisma-client/deployment/serverless/deploy-to-aws-lambda)
