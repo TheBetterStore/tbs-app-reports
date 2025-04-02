@@ -71,9 +71,9 @@ Resources:
           CidrIp:
             Fn::ImportValue: !Sub ${VpcCFStackName}:VPC:Cidr
           Description: "Allow traffic from inside VPC only"
-          FromPort: '3306'
+          FromPort: '5432'
           IpProtocol: tcp
-          ToPort: '3306'
+          ToPort: '5432'
 #      SecurityGroupEgress:
 #        -
 #          CidrIp: "0.0.0.0/0"
@@ -154,21 +154,21 @@ Resources:
         - Key: Name
           Value: !Sub ${AWS::StackName}-OrderRdsDbSubnetGroup
 
-#  RdsRoute53Record:
-#    Type: AWS::Route53::RecordSet
-#    Properties:
-#      Comment: !Sub "${AWS::StackName}-OrderRdsRoute53Record"
-#      HostedZoneId:
-#        Fn::ImportValue: !Sub ${InfraBaseCFName}:HostedZone:Id
-#      Name:
-#        Fn::Join:
-#          - "."
-#          - - reportsdb
-#            - Fn::ImportValue: !Sub ${InfraBaseCFName}:HostedZone:DomainName
-#      Type: CNAME
-#      TTL: '60'
-#      ResourceRecords:
-#        - !GetAtt RdsDbCluster.Endpoint.Address
+  RdsRoute53Record:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      Comment: !Sub "${AWS::StackName}-OrderRdsRoute53Record"
+      HostedZoneId:
+        Fn::ImportValue: !Sub ${InfraBaseCFName}:HostedZone:Id
+      Name:
+        Fn::Join:
+          - "."
+          - - reportsdb
+            - Fn::ImportValue: !Sub ${InfraBaseCFName}:HostedZone:DomainName
+      Type: CNAME
+      TTL: '60'
+      ResourceRecords:
+        - !GetAtt RdsDbCluster.Endpoint.Address
 
   LambdaExecutionRole:
     Type: AWS::IAM::Role
