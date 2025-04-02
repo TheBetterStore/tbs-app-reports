@@ -2,7 +2,6 @@ import 'reflect-metadata';
 import TYPES from '../../../infrastructure/types';
 import container from './container';
 import {IAppReportsService} from "../../services/app-reports-service.interface";
-import {OrderDto} from "../../../infrastructure/persistence/order.dto";
 import {EventBridgeEvent} from "aws-lambda/trigger/eventbridge";
 
 console.log('INFO - lambda is cold-starting.');
