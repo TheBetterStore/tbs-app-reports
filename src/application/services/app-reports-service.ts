@@ -40,7 +40,6 @@ export class AppReportsService implements IAppReportsService {
    */
   async getOrder(customerId: string, orderId: string): Promise<OrderDto> {
     console.info('Entered getOrder');
-    console.warn('Not yet implemented');
     return new Promise<OrderDto>((resolve, reject) => {});
   }
 
@@ -52,11 +51,10 @@ export class AppReportsService implements IAppReportsService {
    */
   async upsertOrder(o: OrderDto) {
     console.info('Entered AppReportsService.upsertOrder');
-    const dbParams = await this.dbParamsBuilder.getDbParams(process.env);
-    console.debug('params:', dbParams);
+    process.env.DATABASE_URL = await this.dbParamsBuilder.getDbUrl(process.env);
+    console.debug('params:', process.env.DATABASE_URL);
 
-    console.warn('Not yet implemented');
-    // return new Promise<OrderViewmodeInterface>((resolve, reject) => {});
+    return await this.repo.upsertOrder(o);
   }
 
 }

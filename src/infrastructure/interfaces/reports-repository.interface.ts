@@ -1,6 +1,6 @@
-import {Order} from '../../domain/entities/order';
+import {OrderDto} from "../persistence/order.dto";
 
 export interface IReportsRepository {
   getOrder(customerId: string, orderId: string): Promise<any>;
-  upsertOrder(p: Order): Promise<any>
+  upsertOrder(p: OrderDto): Promise<any>
 }

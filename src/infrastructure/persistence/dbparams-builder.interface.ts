@@ -1,3 +1,3 @@
 export interface IDbParamsBuilder {
-  getDbParams(envVars: any);
+  getDbUrl(envVars: any);
 }

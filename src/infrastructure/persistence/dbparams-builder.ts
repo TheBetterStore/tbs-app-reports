@@ -12,7 +12,7 @@ export class DbParamsBuilder implements IDbParamsBuilder {
     this.secretsClient = secretsClient;
   }
 
-  public async getDbParams(envVars: any) {
+  public async getDbUrl(envVars: any) {
 
     const self = this;
     console.info('Entered SecretsClient.getDbParams(), retrieving secret for:', envVars.REPORTS_DB_SECRET_ARN);
@@ -33,10 +33,11 @@ export class DbParamsBuilder implements IDbParamsBuilder {
       hostname: envVars.REPORTS_DB_HOSTNAME,
       username: dbSecret.username,
       password: dbSecret.password,
-      dbName: envVars.REPORTS_DB_NAME,
-      connectionLimit: envVars.REPORTS_DB_COMNNECTION_LIMIT,
+      dbName: envVars.REPORTS_DB_NAME
     }
-    return dbParams;
+
+    const url = `postgresql://${dbParams.username}:${dbParams.password}@${dbParams.hostname}:5432/${dbParams.dbName}?schema=public`
+    return url;
   }
 
 }

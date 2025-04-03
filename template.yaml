@@ -218,6 +218,13 @@ Resources:
           FromPort: '443'
           IpProtocol: tcp
           ToPort: '443'
+        -
+          CidrIp:
+            Fn::ImportValue: !Sub ${VpcCFStackName}:VPC:Cidr
+          Description: "Allow all external traffic e.g. for calling AW services"
+          FromPort: '5432'
+          IpProtocol: tcp
+          ToPort: '5432'
 
   UserOrderUpsertedRule:
     Type: AWS::Events::Rule
@@ -233,13 +240,17 @@ Resources:
       State: ENABLED
       Targets:
         - Id: UserOrderUpsertedEventQueue
-          Arn: !GetAtt UpsertOrderFunction.Arn
+          Arn: !Ref UpsertOrderFunction.Alias
+          DeadLetterConfig:
+            Arn: !GetAtt UserOrderUpsertedRuleDLQ.Arn
           RetryPolicy:
             MaximumRetryAttempts: 0
 
   UpsertOrderFunction:
     Type: AWS::Serverless::Function
     Properties:
+      Architectures:
+        - arm64
       CodeUri: ./
       Handler: index.handler
       Runtime: nodejs22.x
@@ -261,7 +272,7 @@ Resources:
         SystemLogLevel: !Ref SystemLogLevel
       Environment:
         Variables:
-          REPORTS_DB_SECRET: !Ref RdsDbSecret
+          REPORTS_DB_SECRET_ARN: !Ref RdsDbSecret
           REPORTS_DB_HOSTNAME:
             Fn::Join:
               - "."
@@ -296,7 +307,7 @@ Resources:
   UserOrderUpsertedEventLambdaPermission:
     Type: AWS::Lambda::Permission
     Properties:
-      FunctionName: !Ref UpsertOrderFunction
+      FunctionName: !Sub ${UpsertOrderFunction}:prod
       Action: lambda:InvokeFunction
       Principal: events.amazonaws.com
       SourceArn: !GetAtt UserOrderUpsertedRule.Arn
@@ -305,6 +316,29 @@ Resources:
     Type: AWS::SQS::Queue
     Properties:
       QueueName: !Sub "${AWS::StackName}-UserOrderUpsertedFunctionDLQ"
+
+  UserOrderUpsertedRuleDLQ:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub "${AWS::StackName}-UserOrderUpsertedRuleDLQ"
+
+  UserOrderUpsertedRuleDLQPolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      PolicyDocument:
+        Statement:
+          -
+            Action:
+              - "SQS:SendMessage"
+            Effect: "Allow"
+            Resource: !GetAtt UserOrderUpsertedRuleDLQ.Arn
+            Principal:
+              Service: events.amazonaws.com
+            Condition:
+              ArnEquals:
+                "aws:SourceArn": !GetAtt UserOrderUpsertedRule.Arn
+      Queues:
+        - !Ref UserOrderUpsertedRuleDLQ
 
 Outputs:
 

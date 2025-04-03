@@ -6,7 +6,7 @@ import {EventBridgeEvent} from "aws-lambda/trigger/eventbridge";
 
 console.log('INFO - lambda is cold-starting.');
 exports.handler = async (event: EventBridgeEvent<any,any>) => {
-  console.info('Entered confirm-order handler', event);
+  console.info('Entered upsert-order handler', event);
 
   const svc = container.get<IAppReportsService>(TYPES.IAppReportsService);
 
