@@ -7,3 +7,4 @@ generated-template.yaml
 /*.svg
 /*local.sh
 .env
+src/generated
