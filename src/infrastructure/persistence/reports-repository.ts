@@ -1,6 +1,6 @@
 import {IReportsRepository} from '../interfaces/reports-repository.interface';
 import {injectable} from 'inversify';
-import {OrderItem, PrismaClient} from '../../generated/prisma';
+import {PrismaClient} from '../../generated/prisma';
 import {OrderDto} from "./order.dto";
 
 @injectable()
@@ -13,15 +13,12 @@ export class ReportsRepository implements IReportsRepository {
   // @ts-ignore
   private readonly dbHostName: string;
 
-  private prisma;
-
   /**
    * constructor
    */
   constructor() {
     this.dbHostName = process.env.REPORTS_DB_HOSTNAME || '';
     this.dbSecretsArn = process.env.REPORTS_DB_SECRET_ARN || '';
-    this.prisma = new PrismaClient();
   }
 
   /**
@@ -41,16 +38,18 @@ export class ReportsRepository implements IReportsRepository {
    * @returns {Promise<Order>}
    */
   async upsertOrder(o: OrderDto): Promise<any> {
+    let prisma = new PrismaClient();
     console.info('Entered AppReportsService.upsertOrder');
 
     let res;
 
     try {
-      res = await this.prisma.Order.create({
-        data: {
+      res = await prisma.order.upsert({
+        where: {
           orderId: o.OrderId,
-          customerId: o.CustomerId,
-          receiptEmail: o.ReceiptEmail,
+        },
+        update: {
+          receiptEmail: o.ReceiptEmail || '',
           amountCharged: o.AmountCharged,
           netTotal: o.NetTotal,
           grossTotal: o.GrossTotal,
@@ -59,24 +58,29 @@ export class ReportsRepository implements IReportsRepository {
           lastUpdatedTime: new Date(o.LastUpdatedTime),
           status: o.Status,
           stripePaymentIntentId: o.StripePaymentIntent?.Id,
-          stripePaymentIntentStatus: o.StripePaymentIntent?.Status
+          stripePaymentIntentStatus: o.StripePaymentIntent?.Status,
+        },
+        create: {
+          orderId: o.OrderId || '',
+          customerId: o.CustomerId,
+          receiptEmail: o.ReceiptEmail || '',
+          amountCharged: o.AmountCharged,
+          netTotal: o.NetTotal,
+          grossTotal: o.GrossTotal,
+          taxRate: o.TaxRate,
+          createdTime: new Date(o.CreatedTime),
+          lastUpdatedTime: new Date(o.LastUpdatedTime),
+          status: o.Status,
+          stripePaymentIntentId: o.StripePaymentIntent?.Id,
+          stripePaymentIntentStatus: o.StripePaymentIntent?.Status,
         }
       });
-      await this.prisma.$disconnect();
+      await prisma.$disconnect();
     } catch(e: any) {
         console.error(e);
-        await this.prisma.$disconnect();
+        await prisma.$disconnect();
     }
 
     return res;
-  }
-
-  toOrderItemDto(o: OrderItem): OrderItem {
-    const r = new this.prisma.OrderItem(
-      {
-
-      }
-    );
-    return r;
   }
 }
