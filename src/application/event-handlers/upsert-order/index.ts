@@ -10,7 +10,7 @@ exports.handler = async (event: EventBridgeEvent<any,any>) => {
 
   const svc = container.get<IAppReportsService>(TYPES.IAppReportsService);
 
-  const order = event.detail;
+  const order = event.detail.order;
   console.info(order);
   await svc.upsertOrder(order);
   console.info('Exiting handler');
