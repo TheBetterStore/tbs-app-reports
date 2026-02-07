@@ -385,3 +385,21 @@ Outputs:
     Value: !Ref UserOrderUpsertedFunctionDLQ
     Export:
       Name: !Sub '${AWS::StackName}:UserOrderUpsertedEventDLQ:Url'
+
+  UserOrderUpsertedRuleDLQName:
+    Description: Queue Name
+    Value: !GetAtt UserOrderUpsertedRuleDLQ.QueueName
+    Export:
+      Name: !Sub '${AWS::StackName}:UserOrderUpsertedRuleDLQ:Name'
+
+  UserOrderUpsertedRuleDLQArn:
+    Description: Queue Arn
+    Value: !GetAtt UserOrderUpsertedRuleDLQ.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}:UserOrderUpsertedRuleDLQ:Arn'
+
+  UserOrderUpsertedRuleDLQUrl:
+    Description: Queue Url
+    Value: !Ref UserOrderUpsertedRuleDLQ
+    Export:
+      Name: !Sub '${AWS::StackName}:UserOrderUpsertedRuleDLQ:Url'

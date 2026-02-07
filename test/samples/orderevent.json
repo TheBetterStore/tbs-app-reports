@@ -1,0 +1,30 @@
+{
+  "timestamp": "2025-03-14T05:48:37.532Z",
+  "level": "INFO",
+  "requestId": "58c35ba2-97a8-4f1e-912e-66bf54f48d86",
+  "message": {
+    "CustomerId": "f7bb5648-a72b-4b48-a04b-8edb5ea05ec1",
+    "OrderId": "88ME9IP39",
+    "ReceiptEmail": "brycepc@hotmail.com",
+    "AmountCharged": "479.13",
+    "NetTotal": "0",
+    "GrossTotal": "0",
+    "TaxRate": "0.15",
+    "TaxTotal": "0",
+    "OrderItems": [
+      {
+        "Quantity": "1",
+        "ProductId": "198ed412-5b16-5404-b9d3-1474658c760b",
+        "ProductName": "Samsung Galaxy A35 5G",
+        "Price": 551
+      }
+    ],
+    "CreatedTime": "2025-03-13T03:52:10.491Z",
+    "LastUpdatedTime": "2025-03-13T03:52:10.491Z",
+    "Status": "INITIAL",
+    "StripePaymentIntent": {
+      "Id": "pi_3R22oZFPlXRs14xe1IhlCYOp",
+      "Status": ""
+    }
+  }
+}
