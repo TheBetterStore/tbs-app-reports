@@ -1,0 +1,32 @@
+{
+  "version": "0",
+  "id": "fd333965-6351-70b5-6e1d-f81baa960d82",
+  "detail-type": "OrderEvent",
+  "source": "tbs-app-order-prod-DynamoDbStreamEventPipe",
+  "account": "048116471576",
+  "time": "2025-04-03T07:53:46Z",
+  "region": "ap-southeast-2",
+  "resources": [],
+  "detail": {
+    "CustomerId": "f7bb5648-a72b-4b48-a04b-8edb5ea05ec1",
+    "OrderId": "8929M3H0O",
+    "ReceiptEmail": "brycepc@hotmail.com",
+    "AmountCharged": "958.26",
+    "NetTotal": "0",
+    "GrossTotal": "0",
+    "TaxRate": "0.15",
+    "TaxTotal": "0",
+    "OrderItems": [
+      {
+        "Quantity": "1",
+        "ProductId": "198ed412-5b16-5404-b9d3-1474658c760b",
+        "ProductName": "Samsung Galaxy A35 5G",
+        "Price": 551
+      }
+    ],
+    "CreatedTime": "2025-04-02T23:48:09.844Z",
+    "LastUpdatedTime": "2025-04-02T23:48:09.844Z",
+    "Status": "INITIAL",
+    "StripePaymentIntent": { "Id": "pi_3R9b0wFPlXRs14xe1X29Dt8J", "Status": "" }
+  }
+}

@@ -24,6 +24,10 @@ Parameters:
     Type: String
     Default: tbs-app-order-prod
 
+  SreErrorHandlerCFStackName:
+    Type: String
+    Default: tbs-sre-errorhandler-prod
+
   UpsertOrderReservedConcurrency:
     Type: String
     Default: 2
@@ -41,6 +45,8 @@ Parameters:
   RdsDbSnapshotId:
     Type: String
     Default: ""
+
+
 
 Conditions:
   UseRdsDbSnapshot: !Not [!Equals [!Ref RdsDbSnapshotId, ""]]
@@ -340,7 +346,27 @@ Resources:
       Queues:
         - !Ref UserOrderUpsertedRuleDLQ
 
+  ReportsFunctionDlqEventSourceMapping:
+    Type: AWS::Lambda::EventSourceMapping
+    Properties:
+      BatchSize: 1
+      EventSourceArn: !GetAtt UserOrderUpsertedFunctionDLQ.Arn
+      FunctionName:
+        Fn::ImportValue: !Sub ${SreErrorHandlerCFStackName}:PersistDlqErrorFunction:Name
+
 Outputs:
+
+  UpsertOrderFunctionName:
+    Description: Function Name
+    Value: !Ref UpsertOrderFunction
+    Export:
+      Name: !Sub '${AWS::StackName}:UpsertOrderFunction:Name'
+
+  UpsertOrderFunctionArn:
+    Description: Function Arn
+    Value: !GetAtt UpsertOrderFunction.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}:UpsertOrderFunction:Arn'
 
   UserOrderUpsertedFunctionDLQName:
     Description: Queue Name
@@ -359,3 +385,21 @@ Outputs:
     Value: !Ref UserOrderUpsertedFunctionDLQ
     Export:
       Name: !Sub '${AWS::StackName}:UserOrderUpsertedEventDLQ:Url'
+
+  UserOrderUpsertedRuleDLQName:
+    Description: Queue Name
+    Value: !GetAtt UserOrderUpsertedRuleDLQ.QueueName
+    Export:
+      Name: !Sub '${AWS::StackName}:UserOrderUpsertedRuleDLQ:Name'
+
+  UserOrderUpsertedRuleDLQArn:
+    Description: Queue Arn
+    Value: !GetAtt UserOrderUpsertedRuleDLQ.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}:UserOrderUpsertedRuleDLQ:Arn'
+
+  UserOrderUpsertedRuleDLQUrl:
+    Description: Queue Url
+    Value: !Ref UserOrderUpsertedRuleDLQ
+    Export:
+      Name: !Sub '${AWS::StackName}:UserOrderUpsertedRuleDLQ:Url'
